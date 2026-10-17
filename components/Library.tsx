@@ -7,9 +7,9 @@ import { Footer, GlobalNav, fmt, pretty } from "./ui";
 
 export default function Library() {
   const [clips, setClips] = useState<ClipMeta[]>([]);
-  const [hosted, setHosted] = useState(true);
+  const [analysis, setAnalysis] = useState(true); // can a pasted link be analyzed right now?
   const load = useCallback(() => fetch("/api/clips", { cache: "no-store" }).then((r) => r.json()).then(setClips).catch(() => {}), []);
-  useEffect(() => { load(); fetch("/api/config").then((r) => r.json()).then((c) => setHosted(c.hosted)).catch(() => {}); }, [load]);
+  useEffect(() => { load(); fetch("/api/config").then((r) => r.json()).then((c) => setAnalysis(c.analysis !== false)).catch(() => {}); }, [load]);
   const setIntended = async (name: string, v: string) => {
     await fetch("/api/clip-settings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, intended: v || null }) });
     load();
@@ -22,13 +22,13 @@ export default function Library() {
 
   return (
     <>
-      <GlobalNav />
       <section className="bg-parchment px-[22px] py-16">
         <div className="mx-auto max-w-[980px]">
+          <p className="t-fine text-ink-48"><Link href="/admin" className="link">Admin dashboard</Link></p>
           <h1 className="t-display">Test library</h1>
           <p className="t-body mt-2 max-w-[680px] text-ink-80">Clips used in the test. Each participant gets 3 random clips with an intended delivery set (one per caption condition A, B, C) and one extra random clip for the final round.</p>
           <p className="t-body-strong mt-4">{ready} of {clips.length} clips ready{ready < 3 ? <span className="font-normal text-ink-48"> · at least 3 needed to start a test</span> : <> · <Link href="/test" className="link">Start test</Link></>}</p>
-          {!hosted && <div className="mt-8"><LinkBar target="library" label="Add clip" onDone={() => load()} /></div>}
+          {analysis && <div className="mt-8"><LinkBar target="library" label="Add clip" onDone={() => load()} /></div>}
         </div>
       </section>
       <section className="bg-canvas px-[22px] py-16">

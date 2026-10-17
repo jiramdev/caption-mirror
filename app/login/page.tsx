@@ -1,12 +1,12 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Footer, GlobalNav } from "@/components/ui";
+import { Footer } from "@/components/ui";
 
 /** Admin sign-in for /test/library and /results. The password comes from ADMIN_PASSWORD (Vercel env). */
 function Login() {
   const router = useRouter();
-  const next = useSearchParams().get("next") || "/test/library";
+  const next = useSearchParams().get("next") || "/admin";
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,7 +30,6 @@ function Login() {
 
   return (
     <>
-      <GlobalNav minimal />
       <section className="bg-parchment px-[22px] py-24">
         <div className="mx-auto w-full max-w-[420px] rounded-[18px] border border-hairline bg-white p-8">
           <h1 className="t-display-md">Researcher sign-in</h1>

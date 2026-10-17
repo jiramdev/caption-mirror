@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { Condition, Participant, TrialResponse } from "@/lib/types";
 import { SCALES } from "./Questionnaire";
-import { Footer, GlobalNav, pretty } from "./ui";
+import { Footer, pretty } from "./ui";
 
 const CONDS: Condition[] = ["A", "B", "C"];
 const CNAME: Record<Condition, string> = { A: "Plain", B: "Tags", C: "Expressive" };
@@ -81,10 +82,10 @@ export default function Results() {
 
   return (
     <>
-      <GlobalNav />
       <section className="bg-parchment px-[22px] pb-14 pt-16">
         <div className="mx-auto flex max-w-[980px] flex-wrap items-end justify-between gap-6">
           <div>
+            <p className="t-fine text-ink-48"><Link href="/admin" className="link">Admin dashboard</Link></p>
             <h1 className="t-hero">Results.</h1>
             <p className="t-lead mt-3 text-ink-80">{people.length} participants · {rows.length} trials{loading ? " · loading" : ""}</p>
           </div>

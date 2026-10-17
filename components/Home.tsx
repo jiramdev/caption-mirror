@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Clip, Condition } from "@/lib/types";
 import VideoPlayer from "./VideoPlayer";
 import LinkBar from "./LinkBar";
-import { Footer, GlobalNav } from "./ui";
+import { Footer } from "./ui";
 
 const CNAME: Record<Condition, string> = { A: "Plain subtitles", B: "Subtitles with tags", C: "Expressive typography" };
 
@@ -25,14 +25,12 @@ export default function Home() {
 
   return (
     <>
-      <GlobalNav />
       <section className="bg-canvas px-[22px] pb-24 pt-16">
         <div className="mx-auto max-w-[980px] text-center">
           <h1 className="t-hero">Caption Mirror</h1>
           <p className="t-lead mx-auto mt-3 max-w-[640px] text-ink">Captions that show how it&apos;s said.</p>
           <div className="mt-7 flex justify-center gap-4">
             <Link href="/test" className="btn-primary btn-hero">Start test</Link>
-            <Link href="/results" className="btn-secondary btn-hero">View results</Link>
           </div>
         </div>
         <div className="mx-auto mt-14 max-w-[980px]">

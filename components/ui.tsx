@@ -24,7 +24,10 @@ export function GlobalNav({ minimal = false, right }: { minimal?: boolean; right
 export function Footer() {
   return (
     <footer className="bg-parchment px-[22px] py-16 text-ink-80">
-      <div className="mx-auto max-w-[980px] t-fine text-ink-48">Caption Mirror · research prototype · Fontys ICT. Videos start muted for sound-off viewing.</div>
+      <div className="mx-auto flex max-w-[980px] flex-wrap items-center justify-between gap-3 t-fine text-ink-48">
+        <span>Caption Mirror · research prototype · Fontys ICT. Videos start muted for sound-off viewing.</span>
+        <Link href="/login" className="hover:text-ink-80">Researcher access</Link>
+      </div>
     </footer>
   );
 }

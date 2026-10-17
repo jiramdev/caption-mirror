@@ -128,10 +128,10 @@ export default function TestFlow() {
 
   return (
     <>
-      <GlobalNav minimal={inTest} right={inTest ? <Progress /> : undefined} />
+      {inTest && <GlobalNav minimal right={<Progress />} />}
 
       {stage === "start" && (
-        <section className="min-h-[calc(100vh-44px)] bg-parchment px-[22px] py-16">
+        <section className="min-h-[100vh] bg-parchment px-[22px] py-16">
           <div className="mx-auto max-w-[640px]">
             <h1 className="t-display">Start a test.</h1>
             <p className="t-body mt-3 text-ink-80">Each participant answers a short survey, watches 3 random library clips without sound (one in each caption condition A, B and C, in a balanced random order), tries a final clip where they control the captions themselves, and answers a few last questions. It takes about 10 minutes.</p>
@@ -145,7 +145,7 @@ export default function TestFlow() {
       )}
 
       {stage === "name" && (
-        <section className="min-h-[calc(100vh-44px)] bg-parchment px-[22px] py-16">
+        <section className="min-h-[100vh] bg-parchment px-[22px] py-16">
           <form onSubmit={register} className="mx-auto max-w-[560px]">
             <h1 className="t-display">Who is taking the test?</h1>
             <p className="t-body mt-2 text-ink-80">Enter the participant&apos;s full name. It&apos;s stored with their answers on this laptop.</p>
