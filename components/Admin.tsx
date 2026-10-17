@@ -42,7 +42,7 @@ export default function Admin() {
 
   return (
     <div className="flex min-h-[100vh] flex-col">
-      <section className="flex-1 bg-parchment px-[22px] pb-14 pt-16">
+      <section className="bg-parchment px-[22px] pb-14 pt-16">
         <div className="mx-auto flex max-w-[980px] flex-wrap items-end justify-between gap-6">
           <div>
             <p className="t-fine text-ink-48">Caption Mirror · research</p>
@@ -53,7 +53,7 @@ export default function Admin() {
         </div>
       </section>
 
-      <section className="bg-canvas px-[22px] pb-16 pt-12">
+      <div className="flex-1 bg-canvas px-[22px] pb-24 pt-12">
         <div className="mx-auto grid max-w-[980px] grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((c) => (
             <Link key={c.k} href={c.href} className="card transition hover:border-black/20">
@@ -63,10 +63,7 @@ export default function Admin() {
             </Link>
           ))}
         </div>
-      </section>
-
-      <section className="bg-canvas px-[22px] pb-24">
-        <div className="mx-auto grid max-w-[980px] grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="mx-auto mt-16 grid max-w-[980px] grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="card">
             <h2 className="t-body-strong">Run a test</h2>
             <p className="t-body mt-1 text-ink-80">Add clips and set their intended delivery in the test library, then hand over the laptop. Participants run the test at <code className="text-ink-80">/test</code>.</p>
@@ -86,7 +83,7 @@ export default function Admin() {
             </div>
           </div>
         </div>
-      </section>
+      </div>
       <Footer />
     </div>
   );

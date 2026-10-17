@@ -82,7 +82,7 @@ export default function Results() {
 
   return (
     <div className="flex min-h-[100vh] flex-col">
-      <section className="flex-1 bg-parchment px-[22px] pb-14 pt-16">
+      <section className="bg-parchment px-[22px] pb-14 pt-16">
         <div className="mx-auto flex max-w-[980px] flex-wrap items-end justify-between gap-6">
           <div>
             <p className="t-fine text-ink-48"><Link href="/admin" className="link">Admin dashboard</Link></p>
@@ -98,10 +98,10 @@ export default function Results() {
       </section>
 
       {rows.length === 0 && people.length === 0 && !loading ? (
-        <section className="bg-canvas px-[22px] py-20 text-center"><p className="t-lead-airy text-ink-48">No responses yet. Run a test from the home page.</p></section>
+        <section className="flex-1 bg-canvas px-[22px] py-20 text-center"><p className="t-lead-airy text-ink-48">No responses yet. Run a test from the admin dashboard.</p></section>
       ) : (
         <>
-          <section className="bg-canvas px-[22px] py-20">
+          <section className="flex-1 bg-canvas px-[22px] py-20">
             <div className="mx-auto max-w-[980px]">
               <h2 className="t-display-md">By condition</h2>
               <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

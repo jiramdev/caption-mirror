@@ -22,7 +22,7 @@ export default function Library() {
 
   return (
     <div className="flex min-h-[100vh] flex-col">
-      <section className="flex-1 bg-parchment px-[22px] py-16">
+      <section className="bg-parchment px-[22px] py-16">
         <div className="mx-auto max-w-[980px]">
           <p className="t-fine text-ink-48"><Link href="/admin" className="link">Admin dashboard</Link></p>
           <h1 className="t-display">Test library</h1>
@@ -31,7 +31,7 @@ export default function Library() {
           {analysis && <div className="mt-8"><LinkBar target="library" label="Add clip" onDone={() => load()} /></div>}
         </div>
       </section>
-      <section className="bg-canvas px-[22px] py-16">
+      <section className="flex-1 bg-canvas px-[22px] py-16">
         <div className="mx-auto grid max-w-[980px] grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
           {clips.length === 0 && <p className="t-body text-ink-48">The library is empty. Paste a YouTube link above to add a clip.</p>}
           {clips.map((c) => (
