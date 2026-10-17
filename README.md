@@ -107,18 +107,23 @@ The UI follows `DESIGN.md` (Apple-style system):
 - 18 px utility cards with hairline borders and no shadows on chrome
 
 ## Hosting online (Vercel + Supabase): optional
-Analysis (Whisper, ffmpeg, yt-dlp) always runs **locally**. The hosted site only plays the published clips and collects responses.
-1. Create a Supabase project. In the SQL editor, run `supabase/migrations/0001_caption_mirror.sql`. It creates the tables `cm_clips`, `cm_clip_settings`, `cm_participants` and `cm_responses` (with RLS on) and a public storage bucket `clips`.
-2. Locally, create `.env.local` (see `.env.example`):
+Analysis (Whisper, ffmpeg, yt-dlp) always runs **on a real machine** — never on Vercel, which only hosts the site. The hosted site plays published clips, collects responses, and forwards "paste a link" requests to the **analysis worker** running on your machine.
+
+1. Create a Supabase project. In the SQL editor, run `supabase/migrations/0001_caption_mirror.sql`, then `supabase/migrations/0002_worker_and_ratelimit.sql`. (0001 creates `cm_clips`, `cm_clip_settings`, `cm_participants`, `cm_responses` with RLS on, plus the public storage bucket `clips`. 0002 creates `cm_worker` — the worker heartbeat — and `cm_job_log` — rate limiting.)
+2. Locally, copy `.env.example` to `.env.local` and fill in:
    ```
    SUPABASE_URL=https://<project>.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=<service role key>
+   SUPABASE_SERVICE_ROLE_KEY=<secret key>
+   WORKER_SECRET=<openssl rand -hex 24>
+   ADMIN_PASSWORD=<password for the researcher pages>
    ```
-3. Analyze clips locally, then run `npm run publish-clips` (or `npm run publish-clips -- scene1 scene2`). This uploads `<name>.json`, `videos/<name>.mp4` and `thumbs/<name>.jpg` to the bucket, registers each clip in `cm_clips`, and copies the intended-delivery settings.
-   **Important:** while `.env.local` contains these variables, `npm run dev` also runs in hosted mode. Remove or rename the file to go back to local mode.
-4. Push the project to GitHub and import it in Vercel. Add the same two environment variables in Vercel (Project → Settings → Environment Variables) and deploy.
-5. When hosted, the link fields are hidden and the analysis API returns 403. Participants, clip settings and responses are stored in Supabase. Tests then run in any browser at `https://<your-app>.vercel.app/test`.
-   The service-role key stays on the server and is never sent to the browser. Note that the home page and /results are not password-protected, so don't share those URLs.
+3. Analyze clips and run `npm run publish-clips` (or `npm run publish-clips -- scene1 scene2`). This uploads `<name>.json`, `videos/<name>.mp4` and `thumbs/<name>.jpg` to the bucket, registers each clip in `cm_clips`, and copies the intended-delivery settings.
+   **Important:** while `.env.local` exists, `npm run dev` also runs in hosted mode. Rename the file to go back to pure local mode (files in `./data` and `./public`).
+4. Start the analysis worker: **`npm run worker`**. It serves the analysis API on `127.0.0.1:8791`, opens a free Cloudflare quick tunnel, and publishes its URL to `cm_worker` every 30 s so the site can find it. Keep it running whenever you want public link analysis to work — when it stops, the home page shows *"Link analysis is offline right now"* and everything else (published clips, tests, results) keeps working. Requires `brew install cloudflared ffmpeg deno` and the `.venv` from the setup section. Optional: set `WORKER_URL=https://<your-fixed-url>` in `.env.local` to use a fixed tunnel (e.g. ngrok) instead of the quick tunnel.
+5. Push the project to GitHub and import it in Vercel. Add these Environment Variables (Project → Settings → Environment Variables, Production **and** Preview) and deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `WORKER_SECRET` (same value as locally), `ADMIN_PASSWORD`. No worker URL to configure — the site reads the heartbeat from Supabase.
+6. When hosted, participants, clip settings and responses are stored in Supabase, and tests run in any browser at `https://<your-app>.vercel.app/test`. The service-role key stays on the server and is never sent to the browser.
+7. **Researcher pages:** `/test/library` and `/results` (plus their APIs: clip settings, clip/participant deletion, results exports) require `ADMIN_PASSWORD`; every "Test library" / "Results" link redirects to `/login`. The home demo and the participant test stay public.
+8. **Public-demo abuse protection:** only YouTube links, 4 analyses per hour per IP and 60 per day in total (Supabase `cm_job_log`), 2 concurrent jobs on the worker, and adding to the library requires sign-in. The home demo is public by design, so don't put anything sensitive there.
 
 ## Included clips
 None. The test library starts empty: add your own clips in `/test/library`. On a box where YouTube is blocked, clips can also be added with `analyze.py` from local files.
@@ -129,6 +134,6 @@ None. The test library starts empty: add your own clips in `/test/library`. On a
 - There is no speaker diarization, so baselines are per clip. In multi-speaker clips a naturally loud speaker can be tagged `[loudly]` more often. Emphasis and the questioning rise use within-phrase comparisons, so they are not affected by this.
 - Feature thresholds are tuned by hand on a few clips. Old or noisy audio lowers pitch reliability.
 - Whisper can still misplace short words. Using `--model medium` helps.
-- The researcher pages (home, /results) have no login. Locally that is fine. When hosted, keep those URLs private.
-- Adding clips needs Python, ffmpeg and yt-dlp on the machine that runs Next.js, so run it locally, not on Vercel. Job progress is kept in memory.
+- The researcher pages (/test/library and /results) need the `ADMIN_PASSWORD` when hosted; the home demo is public, so don't share its URL if that matters.
+- Adding clips needs a machine with Python, ffmpeg and yt-dlp — that's the analysis worker (`npm run worker`) on your own laptop, never Vercel. Job progress lives in the worker's memory.
 - YouTube may require a JS runtime (deno) or block some networks ("Sign in to confirm you're not a bot"). Only use clips you are allowed to use.

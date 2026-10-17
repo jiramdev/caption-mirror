@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { listResponses, saveResponse, getClipSettings, listParticipants } from "@/lib/server/store";
+import { isAdmin } from "@/lib/server/auth";
 import type { TrialResponse } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ const PCOLS = ["pnum", "id", "name", "createdAt", "completedAt", "trial1", "tria
   "post_preferred", "post_why", "post_wouldUse"];
 
 export async function GET(req: Request) {
+  if (!isAdmin(req)) return NextResponse.json({ error: "Sign in required." }, { status: 401 }); // results & exports are admin-only
   const u = new URL(req.url);
   const rows = await listResponses();
   const parts = await listParticipants();

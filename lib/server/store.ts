@@ -20,7 +20,7 @@ const PUB = path.join(process.cwd(), "public");
 const readJson = <T,>(f: string, d: T): T => { try { return JSON.parse(fs.readFileSync(path.join(DATA, f), "utf8")); } catch { return d; } };
 const writeJson = (f: string, v: unknown) => { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(path.join(DATA, f), JSON.stringify(v, null, 1)); };
 
-async function sb<T = unknown>(pathQ: string, init: RequestInit = {}): Promise<T> {
+export async function sb<T = unknown>(pathQ: string, init: RequestInit = {}): Promise<T> {
   const r = await fetch(`${SB_URL}/rest/v1/${pathQ}`, {
     ...init, cache: "no-store",
     headers: { apikey: SB_KEY!, Authorization: `Bearer ${SB_KEY}`, "content-type": "application/json", Prefer: "return=representation,resolution=merge-duplicates", ...(init.headers || {}) },

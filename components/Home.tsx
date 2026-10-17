@@ -16,8 +16,12 @@ export default function Home() {
   const [intensity, setIntensity] = useState(100);
   const [on, setOn] = useState(true);
   const [hosted, setHosted] = useState(true);
+  const [analysis, setAnalysis] = useState(true); // can a pasted link be analyzed right now?
   const load = useCallback(() => fetch("/api/demo", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => { setClip(d); setHas(!!d); }).catch(() => setHas(false)), []);
-  useEffect(() => { load(); fetch("/api/config").then((r) => r.json()).then((c) => setHosted(c.hosted)).catch(() => {}); }, [load]);
+  useEffect(() => {
+    load();
+    fetch("/api/config").then((r) => r.json()).then((c) => { setHosted(c.hosted); setAnalysis(c.analysis !== false); }).catch(() => {});
+  }, [load]);
 
   return (
     <>
@@ -59,7 +63,11 @@ export default function Home() {
               </label>
             </div>
           </div>
-          {!hosted && <div className="mt-10"><LinkBar target="demo" onDone={() => load()} /><p className="t-fine mt-3 text-center text-ink-48">Demo clips are temporary: only the latest one is kept and it is never added to the test library.</p></div>}
+          {analysis ? (
+            <div className="mt-10"><LinkBar target="demo" onDone={() => load()} /><p className="t-fine mt-3 text-center text-ink-48">Demo clips are temporary: only the latest one is kept and it is never added to the test library.</p></div>
+          ) : hosted ? (
+            <p className="t-fine mt-10 text-center text-ink-48">Link analysis is offline right now — check back in a bit.</p>
+          ) : null}
         </div>
       </section>
       <Footer />
