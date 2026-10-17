@@ -21,8 +21,8 @@ export default function Library() {
   const ready = clips.filter((c) => c.intended).length;
 
   return (
-    <>
-      <section className="bg-parchment px-[22px] py-16">
+    <div className="flex min-h-[100vh] flex-col">
+      <section className="flex-1 bg-parchment px-[22px] py-16">
         <div className="mx-auto max-w-[980px]">
           <p className="t-fine text-ink-48"><Link href="/admin" className="link">Admin dashboard</Link></p>
           <h1 className="t-display">Test library</h1>
@@ -55,6 +55,6 @@ export default function Library() {
         </div>
       </section>
       <Footer />
-    </>
+    </div>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import type { Clip, Condition } from "@/lib/types";
 import VideoPlayer from "./VideoPlayer";
 import LinkBar from "./LinkBar";
@@ -24,14 +23,11 @@ export default function Home() {
   }, [load]);
 
   return (
-    <>
-      <section className="bg-canvas px-[22px] pb-24 pt-16">
+    <div className="flex min-h-[100vh] flex-col">
+      <section className="flex-1 bg-canvas px-[22px] pb-24 pt-16">
         <div className="mx-auto max-w-[980px] text-center">
           <h1 className="t-hero">Caption Mirror</h1>
           <p className="t-lead mx-auto mt-3 max-w-[640px] text-ink">Captions that show how it&apos;s said.</p>
-          <div className="mt-7 flex justify-center gap-4">
-            <Link href="/test" className="btn-primary btn-hero">Start test</Link>
-          </div>
         </div>
         <div className="mx-auto mt-14 max-w-[980px]">
           {has === false ? (
@@ -69,6 +65,6 @@ export default function Home() {
         </div>
       </section>
       <Footer />
-    </>
+    </div>
   );
 }

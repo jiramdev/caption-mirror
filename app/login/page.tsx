@@ -29,8 +29,8 @@ function Login() {
   };
 
   return (
-    <>
-      <section className="bg-parchment px-[22px] py-24">
+    <div className="flex min-h-[100vh] flex-col">
+      <section className="flex-1 bg-parchment px-[22px] py-24">
         <div className="mx-auto w-full max-w-[420px] rounded-[18px] border border-hairline bg-white p-8">
           <h1 className="t-display-md">Researcher sign-in</h1>
           <p className="t-body mt-2 text-ink-48">The test library and results are protected. Participants taking the test don&apos;t need this.</p>
@@ -54,7 +54,7 @@ function Login() {
         </div>
       </section>
       <Footer />
-    </>
+    </div>
   );
 }
 

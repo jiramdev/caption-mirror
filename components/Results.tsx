@@ -81,8 +81,8 @@ export default function Results() {
   };
 
   return (
-    <>
-      <section className="bg-parchment px-[22px] pb-14 pt-16">
+    <div className="flex min-h-[100vh] flex-col">
+      <section className="flex-1 bg-parchment px-[22px] pb-14 pt-16">
         <div className="mx-auto flex max-w-[980px] flex-wrap items-end justify-between gap-6">
           <div>
             <p className="t-fine text-ink-48"><Link href="/admin" className="link">Admin dashboard</Link></p>
@@ -201,6 +201,6 @@ export default function Results() {
         </>
       )}
       <Footer />
-    </>
+    </div>
   );
 }
