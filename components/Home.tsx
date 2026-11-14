@@ -14,16 +14,8 @@ export default function Home() {
   const [has, setHas] = useState<boolean | null>(null);
   const [intensity, setIntensity] = useState(100);
   const [on, setOn] = useState(true);
-  const [analysis, setAnalysis] = useState(false); // becomes true after the local worker heartbeat arrives
   const load = useCallback(() => fetch("/api/demo", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => { setClip(d); setHas(!!d); }).catch(() => setHas(false)), []);
-  useEffect(() => {
-    load();
-    let live = true;
-    const check = () => fetch("/api/config", { cache: "no-store" }).then((r) => r.json()).then((c) => { if (live) setAnalysis(c.analysis === true); }).catch(() => { if (live) setAnalysis(false); });
-    void check();
-    const timer = setInterval(check, 5_000);
-    return () => { live = false; clearInterval(timer); };
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div className="flex min-h-[100vh] flex-col">
@@ -33,7 +25,7 @@ export default function Home() {
           <p className="t-lead mx-auto mt-3 max-w-[640px] text-ink">Captions that show how it&apos;s said.</p>
         </div>
         <div className="mx-auto mt-14 max-w-[980px]">
-          {!analysis || has === false ? (
+          {has !== true ? (
             <div className="aspect-video overflow-hidden rounded-[18px] bg-black">
               <iframe className="h-full w-full" src="https://www.youtube-nocookie.com/embed/K4aHsh7NsMs?controls=1" title="Caption Mirror sample video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
             </div>
