@@ -106,24 +106,23 @@ The UI follows `DESIGN.md` (Apple-style system):
 - SF Pro via `system-ui` (Inter elsewhere), 17 px body text, 600-weight headlines with tight tracking
 - 18 px utility cards with hairline borders and no shadows on chrome
 
-## Hosting online (Vercel + Supabase): optional
-Analysis (Whisper, ffmpeg, yt-dlp) runs in a GitHub Actions job — never inside Vercel. The hosted site stores requests in Supabase, and a scheduled runner processes them from the public repository.
+## Hosting online (Vercel + Supabase)
+The Vercel site stores participants, responses, clips and analysis requests in Supabase. When the researcher starts the laptop worker, it polls the queue from the researcher's network and publishes completed clips back to Supabase. The site disables new analysis and new study sessions when that worker is offline.
 
 1. Create a Supabase project. In the SQL editor, run `supabase/migrations/0001_caption_mirror.sql`, `supabase/migrations/0002_worker_and_ratelimit.sql`, and `supabase/migrations/0003_analysis_queue.sql`. (0001 creates participant, response, clip, and storage records; 0002 creates rate limiting; 0003 creates the analysis queue. RLS is enabled on all tables.)
 2. Locally, copy `.env.example` to `.env.local` and fill in:
    ```
    SUPABASE_URL=https://<project>.supabase.co
    SUPABASE_SERVICE_ROLE_KEY=<secret key>
-   WORKER_SECRET=<optional secret for the local worker>
    ADMIN_PASSWORD=<password for the researcher pages>
    ```
 3. Analyze clips and run `npm run publish-clips` (or `npm run publish-clips -- scene1 scene2`). This uploads `<name>.json`, `videos/<name>.mp4` and `thumbs/<name>.jpg` to the bucket, registers each clip in `cm_clips`, and copies the intended-delivery settings.
    **Important:** while `.env.local` exists, `npm run dev` also runs in hosted mode. Rename the file to go back to pure local mode (files in `./data` and `./public`).
-4. In the public GitHub repository, enable Actions and add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` under Settings → Secrets and variables → Actions. The included `.github/workflows/analyze-queue.yml` checks for queued links every five minutes and runs the analysis on a standard hosted runner. GitHub-hosted runner time is free for public repositories. A new request can wait several minutes for the next run, and scheduled starts can be delayed by GitHub.
-5. Import the project in Vercel. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_PASSWORD` for Production and Preview, then deploy. Vercel does not need a GitHub token or a continuously running worker.
-6. When hosted, participants, clip settings and responses are stored in Supabase, and tests run in any browser at `https://<your-app>.vercel.app/test`. The service-role key stays on the server and is never sent to the browser.
-7. **Researcher pages:** `/admin` is the researcher dashboard (library status, participants, trials, analysis availability, links to everything else). `/test/library` and `/results` — plus their APIs (clip settings, clip/participant deletion, results exports) — require `ADMIN_PASSWORD`; the only way in is `/login` (a "Researcher access" link sits in the footer). The home demo and the participant test stay public. There is no site-wide navigation bar: the participant sees only a minimal header with a progress bar during a test.
-8. **Public-demo abuse protection:** only YouTube links, 4 analyses per hour per IP and 60 per day in total (Supabase `cm_job_log`), one queue runner at a time, and adding to the library requires sign-in. The home demo is public by design, so don't put anything sensitive there.
+4. On the laptop that will run analysis, install the project dependencies (`npm ci`, `python -m pip install -r requirements.txt`, plus `ffmpeg` and `deno` if they are not installed). Copy the same `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` into that laptop's `.env.local`.
+5. Import the project in Vercel. Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_PASSWORD` for Production and Preview, then deploy. No GitHub Actions secrets or tunnel are needed.
+6. To open analysis and participant testing, open a terminal in this folder and run `npm run worker`. Leave it running while people analyze videos or take the study. Press Ctrl+C to pause; the site disables new requests within a few seconds. Participants, clips and responses already saved in Supabase remain available to the researcher.
+7. `/admin` shows the worker status, clips, participants and trials. `/test/library` and `/results` require the researcher password; the public study route is `/test`. Starting a new participant is allowed only while the laptop worker is online. The results pages remain available while it is offline.
+8. **Public-demo abuse protection:** only YouTube links, 4 analyses per hour per IP and 60 per day in total (Supabase `cm_job_log`), and adding to the library requires sign-in.
 
 ## Included clips
 None. The test library starts empty: add your own clips in `/test/library`. On a box where YouTube is blocked, clips can also be added with `analyze.py` from local files.
@@ -135,5 +134,4 @@ None. The test library starts empty: add your own clips in `/test/library`. On a
 - Feature thresholds are tuned by hand on a few clips. Old or noisy audio lowers pitch reliability.
 - Whisper can still misplace short words. Using `--model medium` helps.
 - The researcher pages (/test/library and /results) need the `ADMIN_PASSWORD` when hosted; the home demo is public, so don't share its URL if that matters.
-- GitHub disables scheduled workflows on public repositories after 60 days without repository activity. Re-enable the workflow if that happens. In-progress jobs are marked in Supabase and can be retried manually if an Actions run is interrupted.
-- YouTube may require a JS runtime (deno) or block some networks ("Sign in to confirm you're not a bot"). Only use clips you are allowed to use.
+- YouTube may require a JS runtime (deno) or block some links. Only use clips you are allowed to use.

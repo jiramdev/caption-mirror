@@ -9,6 +9,15 @@ export const runtime = "nodejs";
 const YT = /^https?:\/\/(www\.|m\.|music\.)?(youtube\.com|youtu\.be)\//;
 const HOUR = 3_600_000, DAY = 86_400_000;
 const PER_IP_HOURLY = 4, PER_DAY = 60;
+const WORKER_STALE_MS = 60_000;
+
+async function workerOnline() {
+  if (!HOSTED) return true;
+  try {
+    const rows = await sb<{ updated_at: string }[]>("cm_analysis_worker?select=updated_at&id=eq.main&limit=1");
+    return !!rows[0] && Date.now() - Date.parse(rows[0].updated_at) < WORKER_STALE_MS;
+  } catch { return false; }
+}
 
 /** Hosted abuse protection: 4 analyses/hour per IP, 60/day overall. */
 async function rateLimit(ip: string): Promise<NextResponse | null> {
@@ -33,6 +42,7 @@ export async function POST(req: Request) {
   const library = target === "library";
 
   if (library && !isAdmin(req)) return NextResponse.json({ error: "Sign in to add clips to the test library." }, { status: 401 });
+  if (!(await workerOnline())) return NextResponse.json({ error: "Analysis is offline. The researcher needs to start the laptop worker first." }, { status: 503 });
 
   // Local mode: analysis runs in this very process (unchanged behaviour).
   if (!HOSTED) {
@@ -41,7 +51,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ job: job.id });
   }
 
-  // Hosted mode: queue analysis for the free public-repository GitHub Actions runner.
+  // Hosted mode: the researcher’s laptop polls this queue while its worker is running.
   const ip = (req.headers.get("x-forwarded-for") || "unknown").split(",")[0].trim() || "unknown";
   const limited = await rateLimit(ip);
   if (limited) return limited;

@@ -14,12 +14,15 @@ export default function Home() {
   const [has, setHas] = useState<boolean | null>(null);
   const [intensity, setIntensity] = useState(100);
   const [on, setOn] = useState(true);
-  const [hosted, setHosted] = useState(true);
-  const [analysis, setAnalysis] = useState(true); // can a pasted link be analyzed right now?
+  const [analysis, setAnalysis] = useState(false); // becomes true after the local worker heartbeat arrives
   const load = useCallback(() => fetch("/api/demo", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => { setClip(d); setHas(!!d); }).catch(() => setHas(false)), []);
   useEffect(() => {
     load();
-    fetch("/api/config").then((r) => r.json()).then((c) => { setHosted(c.hosted); setAnalysis(c.analysis !== false); }).catch(() => {});
+    let live = true;
+    const check = () => fetch("/api/config", { cache: "no-store" }).then((r) => r.json()).then((c) => { if (live) setAnalysis(c.analysis === true); }).catch(() => { if (live) setAnalysis(false); });
+    void check();
+    const timer = setInterval(check, 5_000);
+    return () => { live = false; clearInterval(timer); };
   }, [load]);
 
   return (
@@ -30,9 +33,9 @@ export default function Home() {
           <p className="t-lead mx-auto mt-3 max-w-[640px] text-ink">Captions that show how it&apos;s said.</p>
         </div>
         <div className="mx-auto mt-14 max-w-[980px]">
-          {has === false ? (
-            <div className="grid aspect-video place-items-center rounded-[18px] bg-parchment text-center">
-              <div><p className="t-tagline">Try it with any video.</p><p className="t-body mt-2 text-ink-48">Paste a YouTube link below to see the captions in action.</p></div>
+          {!analysis || has === false ? (
+            <div className="aspect-video overflow-hidden rounded-[18px] bg-black">
+              <iframe className="h-full w-full" src="https://www.youtube-nocookie.com/embed/K4aHsh7NsMs?controls=1" title="Caption Mirror sample video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
             </div>
           ) : (
             <VideoPlayer clip={clip} err="" condition={condition} setCondition={setCondition} intensity={intensity} setIntensity={setIntensity} on={on} setOn={setOn} study={false} />
@@ -57,11 +60,7 @@ export default function Home() {
               </label>
             </div>
           </div>
-          {analysis ? (
-            <div className="mt-10"><LinkBar target="demo" onDone={() => load()} /><p className="t-fine mt-3 text-center text-ink-48">Demo clips are temporary: only the latest one is kept and it is never added to the test library.</p></div>
-          ) : hosted ? (
-            <p className="t-fine mt-10 text-center text-ink-48">Link analysis is offline right now — check back in a bit.</p>
-          ) : null}
+          <div className="mt-10"><LinkBar target="demo" onDone={() => load()} /><p className="t-fine mt-3 text-center text-ink-48">Demo clips are temporary: only the latest one is kept and it is never added to the test library.</p></div>
         </div>
       </section>
       <Footer />

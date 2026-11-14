@@ -1,4 +1,4 @@
--- Jobs submitted by the hosted site and processed by the scheduled GitHub Actions runner.
+-- Jobs submitted by the hosted site and processed by the researcher's laptop worker.
 create table if not exists cm_analysis_jobs (
   id text primary key,
   url text not null,

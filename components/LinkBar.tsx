@@ -1,14 +1,22 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useJob } from "@/lib/useJob";
 
 export default function LinkBar({ onDone, target, label = "Analyze" }: { onDone: (n: string) => void; target: "demo" | "library"; label?: string }) {
   const [url, setUrl] = useState("");
   const [seconds, setSeconds] = useState(30);
+  const [online, setOnline] = useState(false);
   const { job, start, clear } = useJob(onDone);
   const busy = job?.status === "queued" || job?.status === "running";
+  useEffect(() => {
+    let live = true;
+    const check = () => fetch("/api/config", { cache: "no-store" }).then((r) => r.json()).then((c) => { if (live) setOnline(c.analysis === true); }).catch(() => { if (live) setOnline(false); });
+    void check();
+    const timer = setInterval(check, 5_000);
+    return () => { live = false; clearInterval(timer); };
+  }, []);
   const submit = (e: React.FormEvent) => {
-    e.preventDefault(); if (!url.trim() || busy) return;
+    e.preventDefault(); if (!url.trim() || busy || !online) return;
     start(fetch("/api/youtube", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, seconds, target }) }));
   };
 
@@ -17,14 +25,15 @@ export default function LinkBar({ onDone, target, label = "Analyze" }: { onDone:
       <form onSubmit={submit} className="flex flex-wrap items-center gap-3">
         <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full border border-black/[0.08] bg-canvas pl-5 pr-1.5 focus-within:border-primary-focus">
           <svg viewBox="0 0 24 24" className="h-[14px] w-[14px] shrink-0 text-ink-48" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" strokeLinecap="round" /></svg>
-          <input value={url} onChange={(e) => setUrl(e.target.value)} disabled={busy} placeholder="Paste a YouTube link" aria-label="YouTube link"
+          <input value={url} onChange={(e) => setUrl(e.target.value)} disabled={busy || !online} placeholder="Paste a YouTube link" aria-label="YouTube link"
             className="h-full min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-ink-48" />
-          <select value={seconds} onChange={(e) => setSeconds(+e.target.value)} disabled={busy} aria-label="Length" className="t-caption bg-transparent text-ink-80 outline-none">
+          <select value={seconds} onChange={(e) => setSeconds(+e.target.value)} disabled={busy || !online} aria-label="Length" className="t-caption bg-transparent text-ink-80 outline-none">
             {[15, 30, 45, 60].map((s) => <option key={s} value={s}>First {s}s</option>)}
           </select>
-          <button disabled={busy || !url.trim()} className="btn-primary !min-h-[34px] !px-4 !py-2 !text-[14px]">{label}</button>
+          <button disabled={busy || !online || !url.trim()} className="btn-primary !min-h-[34px] !px-4 !py-2 !text-[14px]">{label}</button>
         </div>
       </form>
+      {!online && <p className="t-fine mt-3 text-center text-ink-48">Analysis is paused. The researcher can start it from their laptop.</p>}
       {job && (
         <div className="mt-3 px-5" role="status" aria-live="polite">
           {job.status === "error" ? (

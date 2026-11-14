@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "worker": "tsx worker/server.mts",
+    "worker": "tsx scripts/analyze-queue.mts --watch",
     "analyze:queue": "tsx scripts/analyze-queue.mts",
     "publish-clips": "node scripts/publish-clips.mjs"
   },

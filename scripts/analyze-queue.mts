@@ -1,9 +1,22 @@
-import { youtube, type Job } from "../lib/server/jobs";
-import { publish } from "../lib/server/publish";
+import fs from "node:fs";
+import path from "node:path";
+import type { Job } from "../lib/server/jobs";
+
+// tsx does not load Next.js' .env.local automatically. Read it for the laptop worker.
+if (fs.existsSync(".env.local")) for (const line of fs.readFileSync(".env.local", "utf8").split("\n")) {
+  const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line);
+  if (!match || process.env[match[1]]) continue;
+  process.env[match[1]] = match[2].replace(/^(["'])(.*)\1$/, "$2");
+}
+process.env.PYTHON ||= fs.existsSync(path.join(process.cwd(), ".venv", "bin", "python"))
+  ? path.join(process.cwd(), ".venv", "bin", "python") : "python3";
+const { youtube } = await import("../lib/server/jobs");
+const { publish } = await import("../lib/server/publish");
 
 const base = process.env.SUPABASE_URL?.replace(/\/$/, "");
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!base || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
+const watch = process.argv.includes("--watch");
+if (!base || !key) throw new Error("Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to .env.local before starting the laptop worker.");
 
 const headers = { apikey: key, Authorization: `Bearer ${key}`, "content-type": "application/json", Prefer: "return=representation,resolution=merge-duplicates" };
 type QueueRow = { id: string; url: string; seconds: number; language: string | null; target: "demo" | "library" };
@@ -33,6 +46,17 @@ async function recoverInterruptedJobs() {
   });
 }
 
+async function heartbeat() {
+  await sb("cm_analysis_worker", {
+    method: "POST",
+    body: JSON.stringify({ id: "main", updated_at: new Date().toISOString() }),
+  });
+}
+
+async function markOffline() {
+  await sb("cm_analysis_worker?id=eq.main", { method: "DELETE" });
+}
+
 async function update(id: string, job: Job) {
   await sb(`cm_analysis_jobs?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -40,28 +64,67 @@ async function update(id: string, job: Job) {
   });
 }
 
-await recoverInterruptedJobs();
 let failed = false;
-for (;;) {
-  const row = await claim();
-  if (!row) break;
-  const job: Job = { id: row.id, status: "running", stage: "Starting", progress: 1, log: "" };
-  const timer = setInterval(() => { void update(row.id, job).catch((e) => console.error("job progress update failed", e)); }, 5_000);
-  console.log(`Starting ${row.target} analysis ${row.id}`);
-  try {
-    await youtube(job, row.url, row.seconds, row.language || undefined, row.target);
-    if (job.status === "done") await publish(job, row.target);
-    if (job.status === "error") {
+let stopping = false;
+let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+let stopPromise: Promise<void> | undefined;
+
+async function processQueue() {
+  await recoverInterruptedJobs();
+  for (;;) {
+    if (stopping) break;
+    const row = await claim();
+    if (!row) break;
+    const job: Job = { id: row.id, status: "running", stage: "Starting", progress: 1, log: "" };
+    const timer = setInterval(() => { void update(row.id, job).catch((e) => console.error("job progress update failed", e)); }, 5_000);
+    console.log(`Starting ${row.target} analysis ${row.id}`);
+    try {
+      await youtube(job, row.url, row.seconds, row.language || undefined, row.target);
+      if (job.status === "done") await publish(job, row.target);
+      if (job.status === "error") {
+        failed = true;
+        console.error(job.error || "Analysis failed");
+      }
+    } catch (e) {
       failed = true;
-      console.error(job.error || "Analysis failed");
+      job.status = "error";
+      job.error = String(e).slice(0, 500);
+    } finally {
+      clearInterval(timer);
+      await update(row.id, job);
     }
-  } catch (e) {
-    job.status = "error";
-    job.error = String(e).slice(0, 500);
-  } finally {
-    clearInterval(timer);
-    await update(row.id, job);
   }
 }
 
-if (failed) process.exitCode = 1;
+if (!watch) {
+  await processQueue();
+  if (failed) process.exitCode = 1;
+} else {
+  await heartbeat();
+  heartbeatTimer = setInterval(() => {
+    void heartbeat().catch((error) => console.error("Worker heartbeat failed:", String(error)));
+  }, 15_000);
+
+  const stop = () => {
+    if (stopping) return;
+    stopping = true;
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    console.log("Stopping laptop worker after the current analysis…");
+    stopPromise ??= markOffline().then(() => console.log("Analysis is now offline on the website."))
+      .catch((error) => console.error("Could not clear worker status; it will expire automatically:", String(error)));
+  };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+  console.log("Laptop analysis is online. Leave this terminal open; press Ctrl+C to stop.");
+
+  while (!stopping) {
+    try {
+      await processQueue();
+      if (!stopping) await new Promise((resolve) => setTimeout(resolve, 3_000));
+    } catch (error) {
+      console.error("Queue check failed:", String(error));
+      if (!stopping) await new Promise((resolve) => setTimeout(resolve, 5_000));
+    }
+  }
+  await stopPromise;
+}

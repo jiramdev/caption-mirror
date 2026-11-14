@@ -27,6 +27,7 @@ function Example({ c }: { c: Condition }) {
 export default function TestFlow() {
   const [stage, setStage] = useState<Stage>("start");
   const [ready, setReady] = useState<number | null>(null);
+  const [analysis, setAnalysis] = useState<boolean | null>(null);
   const [name, setName] = useState("");
   const [nameErr, setNameErr] = useState("");
   const [participant, setParticipant] = useState<Participant | null>(null);
@@ -47,7 +48,14 @@ export default function TestFlow() {
   const watch = useRef(0);
   const intTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { fetch("/api/clips", { cache: "no-store" }).then((r) => r.json()).then((c: { intended?: string }[]) => setReady(c.filter((x) => x.intended).length)).catch(() => setReady(0)); }, []);
+  useEffect(() => {
+    fetch("/api/clips", { cache: "no-store" }).then((r) => r.json()).then((c: { intended?: string }[]) => setReady(c.filter((x) => x.intended).length)).catch(() => setReady(0));
+    let live = true;
+    const check = () => fetch("/api/config", { cache: "no-store" }).then((r) => r.json()).then((c) => { if (live) setAnalysis(c.analysis === true); }).catch(() => { if (live) setAnalysis(false); });
+    void check();
+    const timer = setInterval(check, 5_000);
+    return () => { live = false; clearInterval(timer); };
+  }, []);
   const plan = participant?.trials ?? [];
   const trial = plan[idx];
   const clipToLoad = stage === "trial" ? trial?.clip : stage === "agency" ? participant?.agencyClip : undefined;
@@ -135,7 +143,9 @@ export default function TestFlow() {
           <div className="mx-auto max-w-[640px]">
             <h1 className="t-display">Start a test.</h1>
             <p className="t-body mt-3 text-ink-80">Each participant answers a short survey, watches 3 random library clips without sound (one in each caption condition A, B and C, in a balanced random order), tries a final clip where they control the captions themselves, and answers a few last questions. It takes about 10 minutes.</p>
-            {ready === null ? null : ready < 3 ? (
+            {analysis !== true ? (
+              <div className="card mt-8"><p className="t-body-strong">Testing is paused.</p><p className="t-body mt-1 text-ink-80">The researcher will open the study when the analysis program is running.</p></div>
+            ) : ready === null ? null : ready < 3 ? (
               <div className="card mt-8"><p className="t-body-strong">The library needs at least 3 clips with an intended delivery.</p><p className="t-body mt-1 text-ink-80">Now: {ready}. Add clips and set their intended delivery first.</p><Link href="/test/library" className="btn-primary mt-5 inline-flex">Open test library</Link></div>
             ) : (
               <div className="mt-8 flex gap-3"><button onClick={() => setStage("name")} className="btn-primary">Continue</button><Link href="/test/library" className="btn-secondary">Test library</Link></div>
