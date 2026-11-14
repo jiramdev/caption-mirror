@@ -41,6 +41,7 @@ async function update(id: string, job: Job) {
 }
 
 await recoverInterruptedJobs();
+let failed = false;
 for (;;) {
   const row = await claim();
   if (!row) break;
@@ -50,7 +51,10 @@ for (;;) {
   try {
     await youtube(job, row.url, row.seconds, row.language || undefined, row.target);
     if (job.status === "done") await publish(job, row.target);
-    if (job.status === "error") console.error(job.error || "Analysis failed");
+    if (job.status === "error") {
+      failed = true;
+      console.error(job.error || "Analysis failed");
+    }
   } catch (e) {
     job.status = "error";
     job.error = String(e).slice(0, 500);
@@ -59,3 +63,5 @@ for (;;) {
     await update(row.id, job);
   }
 }
+
+if (failed) process.exitCode = 1;

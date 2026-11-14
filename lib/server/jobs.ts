@@ -33,6 +33,13 @@ function lastErr(log: string) {
   return (lines.pop() || log.trim().split("\n").pop() || "unknown error").slice(0, 400);
 }
 
+function explainYoutubeAccessError(error: string) {
+  if (/sign in to confirm you(?:’|'|\\u2019)?re not a bot|confirm you're not a bot/i.test(error)) {
+    return "YouTube blocked this cloud runner as automated traffic, so this video could not be downloaded. This is a YouTube access restriction, not an analysis failure. Try another publicly accessible video later, or use a video file you have permission to analyze. Do not share your personal YouTube cookies.";
+  }
+  return error;
+}
+
 export async function analyze(job: Job, src: string, name: string, language?: string, base = 40, root?: string) {
   const args = [path.join(process.cwd(), "analyze.py"), src, "--name", name, "--model", process.env.WHISPER_MODEL || "small"];
   if (root) args.push("--root", root);
@@ -56,7 +63,7 @@ export async function youtube(job: Job, url: string, seconds: number, language?:
   job.stage = "Looking up video"; job.progress = 3;
   let info = "";
   const c0 = await run(job, ["-m", "yt_dlp", "--no-playlist", "--print", "%(id)s|%(title)s", "--skip-download", url], (l) => { if (l.includes("|") && !info) info = l; });
-  if (c0 !== 0 || !info) { job.status = "error"; job.error = "Could not read that YouTube link: " + lastErr(job.log); return; }
+  if (c0 !== 0 || !info) { job.status = "error"; job.error = "Could not read that YouTube link: " + explainYoutubeAccessError(lastErr(job.log)); return; }
   const [id, ...t] = info.split("|");
   const name = target === "demo" ? "current" : safeName(`yt-${id}-${t.join(" ").slice(0, 30)}`);
   const title = t.join(" ").trim();
