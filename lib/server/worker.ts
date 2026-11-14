@@ -1,6 +1,6 @@
 /**
- * The analysis worker: yt-dlp + ffmpeg + Whisper run on a real machine (`npm run worker`), never on Vercel.
- * The worker starts a free Cloudflare tunnel and publishes its current URL to the Supabase table `cm_worker`
+ * The analysis worker: yt-dlp + ffmpeg + Whisper run in a long-lived service (`npm run worker`), never on Vercel.
+ * The worker publishes its public URL to the Supabase table `cm_worker`
  * (heartbeat every 30 s). This module resolves that URL for the API routes; a stale heartbeat (> 2.5 min)
  * means "analysis is offline". ANALYSIS_WORKER_URL overrides the heartbeat (e.g. a fixed ngrok domain).
  * Server-side only.

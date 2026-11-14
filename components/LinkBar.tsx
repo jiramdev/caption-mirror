@@ -6,7 +6,7 @@ export default function LinkBar({ onDone, target, label = "Analyze" }: { onDone:
   const [url, setUrl] = useState("");
   const [seconds, setSeconds] = useState(30);
   const { job, start, clear } = useJob(onDone);
-  const busy = job?.status === "running";
+  const busy = job?.status === "queued" || job?.status === "running";
   const submit = (e: React.FormEvent) => {
     e.preventDefault(); if (!url.trim() || busy) return;
     start(fetch("/api/youtube", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, seconds, target }) }));

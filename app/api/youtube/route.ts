@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { HOSTED, sb } from "@/lib/server/store";
-import { workerUrl, WORKER_SECRET } from "@/lib/server/worker";
 import { isAdmin } from "@/lib/server/auth";
 import { newJob, youtube } from "@/lib/server/jobs";
+import crypto from "node:crypto";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -41,22 +41,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ job: job.id });
   }
 
-  // Hosted mode: forward to the analysis worker on the researcher's machine.
+  // Hosted mode: queue analysis for the free public-repository GitHub Actions runner.
   const ip = (req.headers.get("x-forwarded-for") || "unknown").split(",")[0].trim() || "unknown";
   const limited = await rateLimit(ip);
   if (limited) return limited;
-  const w = await workerUrl();
-  if (!w) return NextResponse.json({ error: "Link analysis is offline right now — the analysis machine isn't running. Try again later." }, { status: 503 });
   try {
-    const r = await fetch(`${w}/analyze`, {
-      method: "POST", signal: AbortSignal.timeout(15_000),
-      headers: { "content-type": "application/json", "x-worker-secret": WORKER_SECRET },
-      body: JSON.stringify({ url: url.trim(), seconds: secs, language, target: library ? "library" : "demo" }),
+    const id = crypto.randomBytes(8).toString("hex");
+    await sb("cm_analysis_jobs", {
+      method: "POST",
+      body: JSON.stringify({ id, url: url.trim(), seconds: secs, language: language || null, target: library ? "library" : "demo" }),
     });
-    const j = await r.json().catch(() => ({}) as { job?: string; error?: string });
-    if (!r.ok || !j.job) return NextResponse.json({ error: j.error || `Analysis worker error (${r.status}).` }, { status: r.status });
-    return NextResponse.json({ job: j.job });
+    return NextResponse.json({ job: id });
   } catch {
-    return NextResponse.json({ error: "Couldn't reach the analysis machine — try again in a moment." }, { status: 503 });
+    return NextResponse.json({ error: "Analysis could not be queued. Check the Supabase connection and apply migration 0003_analysis_queue.sql." }, { status: 503 });
   }
 }

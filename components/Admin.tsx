@@ -37,7 +37,7 @@ export default function Admin() {
     { k: "Test library", v: `${ready}/${clips.length}`, s: ready >= 3 ? "ready for a test" : `${3 - ready} more needed`, href: "/test/library" },
     { k: "Participants", v: loading ? "…" : String(people.length), s: done < people.length ? `${done} finished` : last ? `last ${new Date(last.createdAt).toLocaleDateString()}` : "none yet", href: "/results" },
     { k: "Trials recorded", v: loading ? "…" : String(rows.length), s: rows.length ? `mean keep-up ${keepUp.toFixed(1)}/7` : "no trials yet", href: "/results" },
-    { k: "Link analysis", v: analysis ? "Online" : "Offline", s: hosted ? (analysis ? "worker running" : "worker not running") : "local mode", href: "/test/library" },
+    { k: "Link analysis", v: analysis ? "Online" : "Offline", s: hosted ? (analysis ? "GitHub Actions checked recently" : "GitHub Actions runner not active") : "local mode", href: "/test/library" },
   ];
 
   return (

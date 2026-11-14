@@ -1,0 +1,72 @@
+name: Analyze queued videos
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: caption-mirror-analysis-queue
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record runner heartbeat
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          curl --fail --silent --show-error -X POST \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates" \
+            -d "{\"id\":\"main\",\"updated_at\":\"$now\"}" \
+            "$SUPABASE_URL/rest/v1/cm_analysis_worker"
+      - name: Check for queued requests
+        id: queue
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          rows="$(curl --fail --silent --show-error \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/cm_analysis_jobs?select=id&status=eq.queued&limit=1")"
+          if [ "$rows" != "[]" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-node@v4
+        if: steps.queue.outputs.ready == 'true'
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-python@v5
+        if: steps.queue.outputs.ready == 'true'
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: denoland/setup-deno@v2
+        if: steps.queue.outputs.ready == 'true'
+        with:
+          deno-version: v2.x
+      - name: Install ffmpeg
+        if: steps.queue.outputs.ready == 'true'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install project dependencies
+        if: steps.queue.outputs.ready == 'true'
+        run: |
+          npm ci
+          python -m pip install -r requirements.txt
+      - name: Process queued analyses
+        if: steps.queue.outputs.ready == 'true'
+        run: npm run analyze:queue
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

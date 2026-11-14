@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 
-export type JobState = { status: "running" | "done" | "error"; stage: string; progress: number; name?: string; error?: string };
+export type JobState = { status: "queued" | "running" | "done" | "error"; stage: string; progress: number; name?: string; error?: string };
 
 export function useJob(onDone: (name: string) => void) {
   const [job, setJob] = useState<JobState | null>(null);
   async function poll(id: string) {
     for (;;) {
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 3000));
       const r = await fetch(`/api/jobs/${id}`);
       const j = await r.json();
       if (!r.ok) { setJob({ status: "error", stage: "", progress: 0, error: j.error }); return; }

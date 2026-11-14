@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "worker": "tsx worker/server.mts",
+    "analyze:queue": "tsx scripts/analyze-queue.mts",
     "publish-clips": "node scripts/publish-clips.mjs"
   },
   "dependencies": {

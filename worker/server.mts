@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Caption Mirror — analysis worker (runs on YOUR MACHINE, never on Vercel).
+ * Caption Mirror — analysis worker (runs as a long-lived service, never inside Vercel).
  *
  *   npm run worker
  *
@@ -9,13 +9,13 @@
  *      (yt-dlp download → analyze.py = Whisper transcription + loudness/pitch/rate features).
  *   2. Uploads finished clips to Supabase (storage bucket `clips` + cm_clips / cm_clip_settings),
  *      so the Vercel site can play them — demo clips go to _tmp/, library clips to the library.
- *   3. Starts a free Cloudflare quick tunnel and publishes its URL to the Supabase table cm_worker
+ *   3. Publishes its public URL to the Supabase table cm_worker
  *      every 30 s (heartbeat). The Vercel site reads that URL to reach this worker; when the heartbeat
  *      is older than 2.5 min the site tells visitors "analysis is offline".
  *
- * Requires .env.local with SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and WORKER_SECRET (same secret is
- * set in Vercel). Needs ffmpeg, deno and .venv (see README).
- * Everything the site can reach is authenticated with WORKER_SECRET; the tunnel URL alone is not enough.
+ * Requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and WORKER_SECRET (the same secret is set in Vercel).
+ * Locally these can be loaded from .env.local; the container provides ffmpeg, deno and Python packages.
+ * Everything the site can reach is authenticated with WORKER_SECRET; a public URL alone is not enough.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -67,7 +67,6 @@ async function put(rel: string, file: string, type: string, cache = "3600") {
   });
   if (!r.ok) throw new Error(`${rel}: ${r.status} ${(await r.text()).slice(0, 300)}`);
 }
-
 /** A finished job → Supabase. Demo clips land in _tmp/ (latest one wins), library clips in the library. */
 async function publish(job: Job, target: "demo" | "library") {
   if (job.status !== "done" || !job.name) return;
@@ -160,7 +159,7 @@ function startHeartbeat(url: string) {
   if (!beatTimer) beatTimer = setInterval(() => heartbeat(url), 30_000);
 }
 function startTunnel() {
-  const fixed = process.env.WORKER_URL?.trim(); // e.g. a static ngrok/tailscale URL
+  const fixed = process.env.WORKER_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim();
   if (fixed) return startHeartbeat(fixed.replace(/\/$/, ""));
   const cf = spawn("cloudflared", ["tunnel", "--url", `http://127.0.0.1:${PORT}`, "--no-autoupdate"], { stdio: ["ignore", "pipe", "pipe"] });
   let buf = "", found = "";
@@ -177,7 +176,7 @@ function startTunnel() {
   return cf;
 }
 
-server.listen(PORT, "127.0.0.1", () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Caption Mirror analysis worker → http://127.0.0.1:${PORT} (python: ${process.env.PYTHON})`);
   startTunnel();
 });
